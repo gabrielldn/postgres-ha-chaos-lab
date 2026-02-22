@@ -1,0 +1,62 @@
+scope: ${PATRONI_SCOPE}
+namespace: /service/
+name: ${PATRONI_NAME}
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: ${PATRONI_NAME}:8008
+
+etcd3:
+  hosts: ${ETCD_HOSTS}
+
+bootstrap:
+  dcs:
+    # Tuning para failover local mais rapido mantendo margem de seguranca.
+    ttl: 10
+    loop_wait: 2
+    retry_timeout: 3
+    maximum_lag_on_failover: ${REPLICA_LAG_MAX_BYTES}
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        wal_level: replica
+        max_wal_senders: 16
+        max_replication_slots: 16
+        hot_standby: "on"
+        wal_keep_size: 512MB
+        archive_mode: "on"
+        archive_timeout: 60s
+        archive_command: "pgbackrest --stanza=${BACKREST_STANZA} archive-push %p"
+        shared_preload_libraries: pg_stat_statements
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+  pg_hba:
+    - host replication ${REPLICATION_USER} 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: ${PATRONI_NAME}:5432
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/lib/postgresql/17/bin
+  pgpass: /tmp/pgpass
+  authentication:
+    superuser:
+      username: ${PG_SUPERUSER}
+      password: ${PG_SUPERPASS}
+    replication:
+      username: ${REPLICATION_USER}
+      password: ${REPLICATION_PASSWORD}
+  parameters:
+    unix_socket_directories: /var/run/postgresql
+
+log:
+  level: INFO
+
+tags:
+  nofailover: ${PATRONI_NOFAILOVER}
+  noloadbalance: false
+  clonefrom: false
+  nosync: false

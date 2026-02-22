@@ -1,0 +1,15 @@
+services:
+  keepalived:
+    image: ${IMG_KEEPALIVED}
+    container_name: keepalived
+    profiles: ["keepalived"]
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+    environment:
+      KEEPALIVED_AUTOCONF: "false"
+    volumes:
+      - ../keepalived/keepalived.conf:/container/service/keepalived/assets/keepalived.conf:ro
+    networks:
+      - labnet

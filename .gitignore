@@ -1,0 +1,8 @@
+.env
+artifacts/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.swp
+.DS_Store

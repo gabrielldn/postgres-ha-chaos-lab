@@ -1,0 +1,396 @@
+services:
+  etcd1:
+    image: ${IMG_ETCD}
+    container_name: etcd1
+    hostname: etcd1
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd1
+      - --data-dir=/etcd-data
+      - --initial-advertise-peer-urls=http://etcd1:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd1:2379
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=etcd-cluster-1
+      - --quota-backend-bytes=2147483648
+    volumes:
+      - etcd1-data:/etcd-data
+    networks:
+      - labnet
+
+  etcd2:
+    image: ${IMG_ETCD}
+    container_name: etcd2
+    hostname: etcd2
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd2
+      - --data-dir=/etcd-data
+      - --initial-advertise-peer-urls=http://etcd2:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd2:2379
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=etcd-cluster-1
+      - --quota-backend-bytes=2147483648
+    volumes:
+      - etcd2-data:/etcd-data
+    networks:
+      - labnet
+
+  etcd3:
+    image: ${IMG_ETCD}
+    container_name: etcd3
+    hostname: etcd3
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd3
+      - --data-dir=/etcd-data
+      - --initial-advertise-peer-urls=http://etcd3:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd3:2379
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=etcd-cluster-1
+      - --quota-backend-bytes=2147483648
+    volumes:
+      - etcd3-data:/etcd-data
+    networks:
+      - labnet
+
+  minio:
+    image: ${IMG_MINIO}
+    container_name: minio
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - labnet
+
+  minio-init:
+    image: ${IMG_MINIO_MC}
+    container_name: minio-init
+    depends_on:
+      - minio
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "
+      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
+        sleep 2;
+      done;
+      mc mb --ignore-existing local/${MINIO_BUCKET};
+      mc anonymous set private local/${MINIO_BUCKET};
+      "
+    networks:
+      - labnet
+
+  pg1:
+    image: ${IMG_PG_PATRONI}
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: images/postgres-patroni/Dockerfile
+    container_name: pg1
+    hostname: pg1
+    environment:
+      PATRONI_NAME: pg1
+      PATRONI_SCOPE: ${PATRONI_SCOPE}
+      ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PG_SUPERUSER: ${PG_SUPERUSER}
+      PG_SUPERPASS: ${PG_SUPERPASS}
+      PG_APP_DB: ${PG_APP_DB}
+      PG_APP_USER: ${PG_APP_USER}
+      PG_APP_PASS: ${PG_APP_PASS}
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+      BACKREST_STANZA: ${BACKREST_STANZA}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      REPLICA_LAG_MAX_BYTES: ${REPLICA_LAG_MAX_BYTES}
+      PATRONI_NOFAILOVER: "false"
+    depends_on:
+      - etcd1
+      - etcd2
+      - etcd3
+      - minio-init
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - pg1-data:/var/lib/postgresql/data
+      - ../patroni/patroni.yml.tmpl:/opt/patroni/patroni.yml.tmpl:ro
+      - ../patroni/bootstrap.sql:/opt/patroni/bootstrap.sql:ro
+    ports:
+      - "18081:8008"
+    networks:
+      - labnet
+
+  pg2:
+    image: ${IMG_PG_PATRONI}
+    pull_policy: never
+    container_name: pg2
+    hostname: pg2
+    environment:
+      PATRONI_NAME: pg2
+      PATRONI_SCOPE: ${PATRONI_SCOPE}
+      ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PG_SUPERUSER: ${PG_SUPERUSER}
+      PG_SUPERPASS: ${PG_SUPERPASS}
+      PG_APP_DB: ${PG_APP_DB}
+      PG_APP_USER: ${PG_APP_USER}
+      PG_APP_PASS: ${PG_APP_PASS}
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+      BACKREST_STANZA: ${BACKREST_STANZA}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      REPLICA_LAG_MAX_BYTES: ${REPLICA_LAG_MAX_BYTES}
+      PATRONI_NOFAILOVER: "false"
+    depends_on:
+      - etcd1
+      - etcd2
+      - etcd3
+      - minio-init
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - pg2-data:/var/lib/postgresql/data
+      - ../patroni/patroni.yml.tmpl:/opt/patroni/patroni.yml.tmpl:ro
+      - ../patroni/bootstrap.sql:/opt/patroni/bootstrap.sql:ro
+    ports:
+      - "18082:8008"
+    networks:
+      - labnet
+
+  pg3:
+    image: ${IMG_PG_PATRONI}
+    pull_policy: never
+    container_name: pg3
+    hostname: pg3
+    environment:
+      PATRONI_NAME: pg3
+      PATRONI_SCOPE: ${PATRONI_SCOPE}
+      ETCD_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PG_SUPERUSER: ${PG_SUPERUSER}
+      PG_SUPERPASS: ${PG_SUPERPASS}
+      PG_APP_DB: ${PG_APP_DB}
+      PG_APP_USER: ${PG_APP_USER}
+      PG_APP_PASS: ${PG_APP_PASS}
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+      BACKREST_STANZA: ${BACKREST_STANZA}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      REPLICA_LAG_MAX_BYTES: ${REPLICA_LAG_MAX_BYTES}
+      PATRONI_NOFAILOVER: "false"
+    depends_on:
+      - etcd1
+      - etcd2
+      - etcd3
+      - minio-init
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - pg3-data:/var/lib/postgresql/data
+      - ../patroni/patroni.yml.tmpl:/opt/patroni/patroni.yml.tmpl:ro
+      - ../patroni/bootstrap.sql:/opt/patroni/bootstrap.sql:ro
+    ports:
+      - "18083:8008"
+    networks:
+      - labnet
+
+  haproxy:
+    image: ${IMG_HAPROXY}
+    container_name: haproxy
+    hostname: haproxy
+    depends_on:
+      - pg1
+      - pg2
+      - pg3
+    environment:
+      REPLICA_LAG_MAX_BYTES: ${REPLICA_LAG_MAX_BYTES}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        sed "s/__REPLICA_LAG_MAX_BYTES__/${REPLICA_LAG_MAX_BYTES}/g" /usr/local/etc/haproxy/haproxy.cfg.tmpl > /tmp/haproxy.cfg &&
+        exec haproxy -W -db -f /tmp/haproxy.cfg
+    ports:
+      - "${HAPROXY_RW_PORT}:5432"
+      - "${HAPROXY_RO_PORT}:5433"
+      - "${HAPROXY_STATS_PORT}:8404"
+    volumes:
+      - ../haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg.tmpl:ro
+    networks:
+      - labnet
+
+  toxiproxy:
+    image: ${IMG_TOXIPROXY}
+    container_name: toxiproxy
+    hostname: toxiproxy
+    ports:
+      - "${TOXIPROXY_API_PORT}:8474"
+    networks:
+      - labnet
+
+  postgres-exporter-pg1:
+    image: ${IMG_POSTGRES_EXPORTER}
+    container_name: postgres-exporter-pg1
+    environment:
+      DATA_SOURCE_NAME: postgresql://${PG_SUPERUSER}:${PG_SUPERPASS}@pg1:5432/postgres?sslmode=disable
+    depends_on:
+      - pg1
+    networks:
+      - labnet
+
+  postgres-exporter-pg2:
+    image: ${IMG_POSTGRES_EXPORTER}
+    container_name: postgres-exporter-pg2
+    environment:
+      DATA_SOURCE_NAME: postgresql://${PG_SUPERUSER}:${PG_SUPERPASS}@pg2:5432/postgres?sslmode=disable
+    depends_on:
+      - pg2
+    networks:
+      - labnet
+
+  postgres-exporter-pg3:
+    image: ${IMG_POSTGRES_EXPORTER}
+    container_name: postgres-exporter-pg3
+    environment:
+      DATA_SOURCE_NAME: postgresql://${PG_SUPERUSER}:${PG_SUPERPASS}@pg3:5432/postgres?sslmode=disable
+    depends_on:
+      - pg3
+    networks:
+      - labnet
+
+  pgbackrest-exporter:
+    image: ${IMG_PG_PATRONI}
+    pull_policy: never
+    container_name: pgbackrest-exporter
+    command: ["python3", "/opt/pgbackrest/exporter/backrest_exporter.py"]
+    environment:
+      EXPORTER_DSN: postgresql://${PG_SUPERUSER}:${PG_SUPERPASS}@pg1:5432/postgres?sslmode=disable
+      EXPORTER_PORT: 9188
+    volumes:
+      - ../pgbackrest/exporter/backrest_exporter.py:/opt/pgbackrest/exporter/backrest_exporter.py:ro
+    depends_on:
+      - pg1
+    networks:
+      - labnet
+
+  node-exporter:
+    image: ${IMG_NODE_EXPORTER}
+    container_name: node-exporter
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro
+    networks:
+      - labnet
+
+  prometheus:
+    image: ${IMG_PROMETHEUS}
+    container_name: prometheus
+    hostname: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    networks:
+      - labnet
+
+  grafana:
+    image: ${IMG_GRAFANA}
+    container_name: grafana
+    hostname: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - labnet
+
+  psql-client:
+    image: ${IMG_PSQL_CLIENT}
+    container_name: psql-client
+    hostname: psql-client
+    command: ["sleep", "infinity"]
+    networks:
+      - labnet
+
+  restore:
+    image: ${IMG_PG_PATRONI}
+    pull_policy: never
+    container_name: restore
+    hostname: restore
+    profiles: ["restore"]
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["sleep infinity"]
+    environment:
+      PG_SUPERUSER: ${PG_SUPERUSER}
+      PG_SUPERPASS: ${PG_SUPERPASS}
+      PG_APP_DB: ${PG_APP_DB}
+      BACKREST_STANZA: ${BACKREST_STANZA}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    ports:
+      - "${RESTORE_PORT}:5432"
+    volumes:
+      - restore-data:/var/lib/postgresql/data
+    depends_on:
+      - minio
+    networks:
+      - labnet
+
+  test-runner:
+    image: ${IMG_TEST_RUNNER}
+    container_name: test-runner
+    profiles: ["test"]
+    working_dir: /workspace
+    entrypoint: ["/bin/bash", "-lc"]
+    command: >-
+      pip install --no-cache-dir -r tests/requirements.txt &&
+      pytest -q tests/e2e
+    volumes:
+      - ..:/workspace
+    networks:
+      - labnet
+
+networks:
+  labnet:
+    name: ${LAB_NAME:-postgres-ha-chaos-lab}-net
+
+volumes:
+  etcd1-data:
+  etcd2-data:
+  etcd3-data:
+  pg1-data:
+  pg2-data:
+  pg3-data:
+  restore-data:
+  minio-data:

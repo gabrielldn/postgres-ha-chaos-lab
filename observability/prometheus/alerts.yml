@@ -1,0 +1,42 @@
+groups:
+  - name: postgres-ha-chaos-lab
+    rules:
+      - alert: PatroniPrimaryUnavailable
+        expr: absent(patroni_primary == 1)
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sem primário visível no Patroni"
+
+      - alert: FailoverDetected
+        expr: changes(patroni_primary[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Failover detectado nos últimos 5 minutos"
+
+      - alert: ReplicaLagHigh
+        expr: max(pg_replication_lag) > 16777216
+        for: 60s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Replication lag acima de 16MB"
+
+      - alert: WalArchiveStalled
+        expr: pg_archiver_last_archived_age_seconds > 300
+        for: 60s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Atraso no arquivamento de WAL acima de 5 minutos"
+
+      - alert: PgbackrestCheckFailed
+        expr: pgbackrest_check_success == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Coleta de saúde de backup/archiver falhou"

@@ -1,0 +1,2 @@
+patroni[etcd]==4.0.4
+psycopg[binary]==3.2.6
