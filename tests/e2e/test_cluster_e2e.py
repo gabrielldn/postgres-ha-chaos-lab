@@ -1,37 +1,24 @@
 from __future__ import annotations
 
-import json
 import os
-import subprocess
 import time
 
 import psycopg
 import pytest
 
-from conftest import compose_cmd
+NODES = ("pg1", "pg2", "pg3")
+PG_USER = os.getenv("PG_SUPERUSER", "postgres")
+PG_PASS = os.getenv("PG_SUPERPASS", "dummy-superpass-change-me")
+PG_DB = os.getenv("PG_APP_DB", "appdb")
 
 
-def _exec_pg1_patronictl() -> list[dict]:
-    proc = subprocess.run(
-        compose_cmd("exec", "-T", "pg1", "patronictl", "-c", "/etc/patroni/patroni.yml", "list", "-f", "json"),
-        text=True,
-        capture_output=True,
-        check=True,
-    )
-    return json.loads(proc.stdout)
-
-
-def _query(sql: str, port: int) -> list[tuple]:
-    pg_user = os.getenv("PG_SUPERUSER", "postgres")
-    pg_pass = os.getenv("PG_SUPERPASS", "dummy-superpass-change-me")
-    pg_db = os.getenv("PG_APP_DB", "appdb")
-
+def _query(host: str, port: int, sql: str, dbname: str | None = None) -> list[tuple]:
     with psycopg.connect(
-        host="haproxy",
+        host=host,
         port=port,
-        user=pg_user,
-        password=pg_pass,
-        dbname=pg_db,
+        user=PG_USER,
+        password=PG_PASS,
+        dbname=dbname or PG_DB,
         connect_timeout=2,
     ) as conn:
         with conn.cursor() as cur:
@@ -42,17 +29,36 @@ def _query(sql: str, port: int) -> list[tuple]:
             return []
 
 
+def _discover_node_roles() -> dict[str, bool]:
+    roles: dict[str, bool] = {}
+    for node in NODES:
+        try:
+            row = _query(node, 5432, "SELECT pg_is_in_recovery()", dbname="postgres")
+        except Exception:
+            continue
+        if row:
+            roles[node] = bool(row[0][0])
+    return roles
+
+
 @pytest.mark.e2e
 def test_cluster_has_single_leader(stack_running: bool) -> None:
     if not stack_running:
         pytest.skip("stack nao esta ativa")
 
-    members = _exec_pg1_patronictl()
-    leaders = [m for m in members if m.get("Role") == "Leader"]
-    replicas = [m for m in members if m.get("Role") == "Replica"]
+    deadline = time.time() + 60
+    last_roles: dict[str, bool] = {}
+    while time.time() < deadline:
+        roles = _discover_node_roles()
+        if len(roles) == len(NODES):
+            leaders = [node for node, is_replica in roles.items() if not is_replica]
+            replicas = [node for node, is_replica in roles.items() if is_replica]
+            if len(leaders) == 1 and len(replicas) >= 1:
+                return
+        last_roles = roles
+        time.sleep(2)
 
-    assert len(leaders) == 1, members
-    assert len(replicas) >= 1, members
+    pytest.fail(f"cluster sem 1 lider + replicas dentro do timeout. ultimo estado: {last_roles}")
 
 
 @pytest.mark.e2e
@@ -61,10 +67,11 @@ def test_rw_endpoint_accepts_write(stack_running: bool) -> None:
         pytest.skip("stack nao esta ativa")
 
     _query(
-        "CREATE TABLE IF NOT EXISTS e2e_rw (id bigserial primary key, created_at timestamptz default now())",
+        "haproxy",
         5432,
+        "CREATE TABLE IF NOT EXISTS e2e_rw (id bigserial primary key, created_at timestamptz default now())",
     )
-    rows = _query("INSERT INTO e2e_rw DEFAULT VALUES RETURNING id", 5432)
+    rows = _query("haproxy", 5432, "INSERT INTO e2e_rw DEFAULT VALUES RETURNING id")
     assert rows and rows[0][0] is not None
 
 
@@ -74,12 +81,15 @@ def test_ro_endpoint_accepts_read(stack_running: bool) -> None:
         pytest.skip("stack nao esta ativa")
 
     deadline = time.time() + 40
+    last_error = "sem resposta do endpoint RO"
     while time.time() < deadline:
         try:
-            rows = _query("SELECT inet_server_addr()::text", 5433)
-            assert rows and rows[0][0]
-            return
-        except Exception:
+            rows = _query("haproxy", 5433, "SELECT inet_server_addr()::text, pg_is_in_recovery()")
+            if rows and rows[0][0] and bool(rows[0][1]):
+                return
+            last_error = f"RO roteou para primario ou sem endereco: {rows!r}"
+        except Exception as exc:
+            last_error = str(exc)
             time.sleep(2)
 
-    pytest.fail("endpoint RO nao respondeu dentro do timeout")
+    pytest.fail(f"endpoint RO nao estabilizou em replica dentro do timeout: {last_error}")

@@ -46,7 +46,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
       "targets": [
         {
-          "expr": "max(pg_replication_lag)",
+          "expr": "max(pg_stat_replication_pg_wal_lsn_diff)",
           "refId": "A"
         }
       ]

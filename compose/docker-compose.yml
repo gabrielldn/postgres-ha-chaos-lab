@@ -373,9 +373,7 @@ services:
     profiles: ["test"]
     working_dir: /workspace
     entrypoint: ["/bin/bash", "-lc"]
-    command: >-
-      pip install --no-cache-dir -r tests/requirements.txt &&
-      pytest -q tests/e2e
+    command: ["pip install --no-cache-dir -r tests/requirements.txt && pytest -q tests/e2e"]
     volumes:
       - ..:/workspace
     networks:

@@ -1,44 +1,23 @@
 from __future__ import annotations
 
-import os
-import subprocess
-from pathlib import Path
+import socket
+import time
 
 import pytest
 
-
-ROOT = Path(__file__).resolve().parents[1]
-ENV_FILE = ROOT / ".env"
-ENV_EXAMPLE = ROOT / ".env.example"
-LOCK_FILE = ROOT / "compose" / "images.lock.env"
-COMPOSE_FILE = ROOT / "compose" / "docker-compose.yml"
-
-
-def compose_cmd(*args: str) -> list[str]:
-    env = ENV_FILE if ENV_FILE.exists() else ENV_EXAMPLE
-    return [
-        "docker",
-        "compose",
-        "--env-file",
-        str(env),
-        "--env-file",
-        str(LOCK_FILE),
-        "-f",
-        str(COMPOSE_FILE),
-        *args,
-    ]
-
-
-def run_cmd(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(list(args), cwd=ROOT, text=True, capture_output=True, check=check)
+def _is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 @pytest.fixture(scope="session")
 def stack_running() -> bool:
-    proc = subprocess.run(
-        compose_cmd("ps", "--services", "--filter", "status=running"),
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-    )
-    return proc.returncode == 0 and "pg" in proc.stdout
+    deadline = time.time() + 45
+    while time.time() < deadline:
+        if _is_port_open("haproxy", 5432) and any(_is_port_open(node, 5432) for node in ("pg1", "pg2", "pg3")):
+            return True
+        time.sleep(1)
+    return False
