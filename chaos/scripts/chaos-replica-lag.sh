@@ -35,11 +35,13 @@ if [[ -z "${leader_ip}" ]]; then
   exit 1
 fi
 
-echo "target_replica=${target_replica}" > "${ART_DIR}/context.txt"
-echo "target_addr=${target_addr}" >> "${ART_DIR}/context.txt"
-echo "target_rest_port=${target_rest_port}" >> "${ART_DIR}/context.txt"
-echo "leader=${leader}" >> "${ART_DIR}/context.txt"
-echo "leader_ip=${leader_ip}" >> "${ART_DIR}/context.txt"
+{
+  echo "target_replica=${target_replica}"
+  echo "target_addr=${target_addr}"
+  echo "target_rest_port=${target_rest_port}"
+  echo "leader=${leader}"
+  echo "leader_ip=${leader_ip}"
+} > "${ART_DIR}/context.txt"
 
 cleanup() {
   compose_base exec -u root -T "${target_replica}" bash -lc "iptables -D INPUT -s ${leader_ip} -p tcp --sport 5432 -j DROP" >/dev/null 2>&1 || true
@@ -70,7 +72,7 @@ sql_via_haproxy_rw "CREATE TABLE IF NOT EXISTS chaos_load_big (id bigserial prim
 ) &
 writer_pid=$!
 
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
   ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if [[ -n "${target_rest_port}" ]]; then
     if code="$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${target_rest_port}/replica?lag=${REPLICA_LAG_MAX_BYTES}")"; then

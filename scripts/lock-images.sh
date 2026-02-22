@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK_FILE="${ROOT_DIR}/compose/images.lock.env"
 TMP_FILE="${LOCK_FILE}.tmp"
 
-# shellcheck disable=SC1091
+# shellcheck disable=SC1090
 source "${LOCK_FILE}"
 
 resolve_digest() {

@@ -7,9 +7,9 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   ENV_FILE="${ROOT_DIR}/.env.example"
 fi
 
-# shellcheck disable=SC1090
 existing_run_id="${RUN_ID:-}"
 set -a
+# shellcheck disable=SC1090
 source "${ENV_FILE}"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/compose/images.lock.env"

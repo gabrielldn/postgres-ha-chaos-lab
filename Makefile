@@ -79,7 +79,7 @@ compose-config: ensure-env
 
 ci-smoke: compose-config
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck chaos/scripts/*.sh pgbackrest/scripts/*.sh scripts/*.sh scripts/lib/*.sh; \
+		shellcheck -x -e SC1091 chaos/scripts/*.sh pgbackrest/scripts/*.sh scripts/*.sh scripts/lib/*.sh; \
 	else \
 		echo "shellcheck nao encontrado, pulando"; \
 	fi

@@ -17,7 +17,7 @@ printf 'leader_before=%s\n' "${leader}" > "${ART_DIR}/context.txt"
 
 compose_pumba run --rm pumba netem --duration 25s loss --percent 100 "re2:^${leader}$" > "${ART_DIR}/pumba.log" 2>&1 || true
 
-for i in $(seq 1 15); do
+for _ in $(seq 1 15); do
   ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if sql_via_haproxy_rw "SELECT 1;" >/dev/null 2>&1; then
     echo "${ts},rw_ok" >> "${ART_DIR}/rw-probe.csv"
