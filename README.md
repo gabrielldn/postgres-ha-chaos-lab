@@ -1,14 +1,14 @@
 # Postgres HA Chaos Lab
 
 [![Licença MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-yellow.svg)](LICENSE)
-![WSL2 Ubuntu 24.04+](https://img.shields.io/badge/WSL2-Ubuntu%2024.04%2B-E95420?logo=ubuntu&logoColor=white)
+![Linux Ubuntu 24.04+](https://img.shields.io/badge/Linux-Ubuntu%2024.04%2B-E95420?logo=ubuntu&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Patroni 4.0.4](https://img.shields.io/badge/Patroni-4.0.4-1F5E99)
 ![etcd quorum 3](https://img.shields.io/badge/etcd-quorum%203-419EDA)
 ![Smoke CI](https://img.shields.io/github/actions/workflow/status/gabrielldn/postgres-ha-chaos-lab/smoke.yml?label=Smoke%20CI)
 
-Laboratório local `production-like` para validar e demonstrar HA/DR/Chaos em PostgreSQL com evidência prática reproduzível em WSL2.
+Laboratório local `production-like` para validar e demonstrar HA/DR/Chaos em PostgreSQL com evidência prática reproduzível em Linux Ubuntu 24.04+ (nativo ou WSL2).
 
 ## Objetivo do projeto
 
@@ -128,6 +128,6 @@ make verify
 
 ## Observações práticas
 
-- `keepalived` é profile opcional/experimental em WSL.
+- `keepalived` é profile opcional/experimental em alguns ambientes locais (especialmente WSL2).
 - O cenário `chaos-primary-kill` pode violar SLO agressivo em hosts locais com contenção de recursos.
 - O critério de sucesso principal é segurança (sem split-brain) + evidência reproduzível.

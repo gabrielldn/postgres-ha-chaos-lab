@@ -1,7 +1,7 @@
 # Arquitetura do postgres-ha-chaos-lab
 
 ## Objetivo
-Ambiente 100% local (WSL + Docker Compose) para demonstrar HA/DR/Chaos em Postgres com evidência prática.
+Ambiente 100% local (Linux Ubuntu 24.04+ nativo ou WSL2 + Docker Compose) para demonstrar HA/DR/Chaos em Postgres com evidência prática.
 
 ## Componentes
 - `pg1`, `pg2`, `pg3`: Postgres 17 com Patroni.

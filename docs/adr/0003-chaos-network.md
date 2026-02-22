@@ -8,4 +8,4 @@ Aceito
 - `pumba` fica em profile opcional para partição/latência entre containers do cluster.
 
 ## Motivação
-Equilíbrio entre previsibilidade no WSL e cobertura de cenários avançados.
+Equilíbrio entre previsibilidade em ambiente local e cobertura de cenários avançados.
