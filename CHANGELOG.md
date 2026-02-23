@@ -4,6 +4,30 @@ Todas as mudanças relevantes deste projeto serão documentadas neste arquivo.
 
 Formato inspirado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e versionamento semântico.
 
+## [1.0.1] - 2026-02-23
+
+### Destaques
+- Alinhamento do repositório com histórico de commits atômico e semântico no `main`.
+- Fortalecimento dos contratos de caos, CI E2E e sanity checks funcionais.
+
+### Added
+- Job E2E no CI (`smoke.yml`) com `make up`, `make init` e `make test`.
+- Runbook dedicado para partição entre primário e etcd.
+- Sanity checks de contrato:
+  - scripts de caos devem gerar `result.json` e falhar com `exit 1` em violação;
+  - targets de caos no `Makefile`;
+  - uso de `set -euo pipefail` em scripts shell;
+  - presença de job E2E no workflow de smoke.
+
+### Changed
+- Cenário `chaos-primary-etcd-partition` migrado para partição determinística via `iptables` (mais estável no ambiente local) com assertivas explícitas de safety e recuperação.
+- `SUMMARY.md` consolidado inclui resultado de `primary-etcd-partition`.
+- Documentação operacional atualizada para refletir estratégia de rede determinística (`iptables`) e papel opcional do Pumba.
+
+### Fixed
+- Removida inconsistência de engenharia no cenário `primary-etcd-partition`, que antes não possuía critério de aceite automatizado.
+- Fechado gap de pipeline onde E2E não era executado em CI.
+
 ## [1.0.0] - 2026-02-23
 
 ### Destaques
