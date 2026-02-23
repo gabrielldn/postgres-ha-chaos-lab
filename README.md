@@ -14,6 +14,15 @@
 
 Laboratório local `production-like` para validar e demonstrar HA/DR/Chaos em PostgreSQL com evidência prática reproduzível em Linux Ubuntu 24.04+ (nativo ou WSL2).
 
+## Conexão com a plataforma
+
+Este laboratório é o backend de dados de referência para:
+
+- `secure-gitops-platform`: https://github.com/gabrielldn/secure-gitops-platform
+- `java-api-with-otlp-sdk`: https://github.com/gabrielldn/java-api-with-otlp-sdk
+
+No fluxo integrado, o workload Java roda no Kubernetes e conecta no endpoint RW via `host.k3d.internal:15432` com credenciais publicadas no Vault (`kv/apps/java-api/db`) pelo script `make vault-configure` da plataforma.
+
 ## Objetivo do projeto
 
 Entregar um ambiente reproduzível para praticar e demonstrar:
