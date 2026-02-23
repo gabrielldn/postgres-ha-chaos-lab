@@ -2,6 +2,7 @@
 artifacts/
 __pycache__/
 .pytest_cache/
+.coverage
 *.pyc
 *.pyo
 *.swp

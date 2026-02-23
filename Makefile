@@ -11,7 +11,7 @@ COMPOSE_KEEPALIVED = docker compose --env-file $(COMPOSE_ENV) --env-file compose
 RUN_ID ?= $(shell date -u +%Y%m%dT%H%M%SZ)
 TEST_RUNNER_IMAGE ?= python:3.12-slim
 
-.PHONY: ensure-env lock-images up down restart ps logs init verify test test-sanity \
+.PHONY: ensure-env lock-images up down restart ps logs init verify test test-sanity test-sanity-cov coverage-badge \
 	chaos-primary-kill chaos-etcd-quorum chaos-primary-etcd-partition chaos-replica-lag chaos-archive-break \
 	pitr-backup pitr-restore evidence-clean ci-smoke compose-config
 
@@ -47,6 +47,14 @@ test: ensure-env
 
 test-sanity:
 	docker run --rm -v "$(PWD):/workspace" -w /workspace $(TEST_RUNNER_IMAGE) bash -lc "pip install --no-cache-dir -r tests/requirements.txt && pytest -q -k sanity tests/sanity"
+
+test-sanity-cov:
+	@mkdir -p artifacts/coverage
+	docker run --rm -v "$(PWD):/workspace" -w /workspace $(TEST_RUNNER_IMAGE) bash -lc "pip install --no-cache-dir -r tests/requirements.txt && pytest -q -k sanity --cov=tests --cov-report=term-missing --cov-report=xml:artifacts/coverage/coverage.xml tests/sanity"
+
+coverage-badge:
+	@mkdir -p artifacts/coverage docs/badges
+	docker run --rm -v "$(PWD):/workspace" -w /workspace $(TEST_RUNNER_IMAGE) bash -lc "pip install --no-cache-dir -r tests/requirements.txt anybadge==1.16.0 && pytest -q -k sanity --cov=tests --cov-report=xml:artifacts/coverage/coverage.xml tests/sanity && COV_PCT=\$$(python -c \"import xml.etree.ElementTree as ET; r=ET.parse('artifacts/coverage/coverage.xml').getroot(); print(round(float(r.attrib.get('line-rate', 0.0))*100, 2))\") && anybadge --label=coverage --value=\$${COV_PCT} --file=docs/badges/coverage.svg --suffix='%' 50=red 70=orange 80=yellow 90=green"
 
 chaos-primary-kill: ensure-env
 	@RUN_ID=$(RUN_ID) bash chaos/scripts/chaos-primary-kill.sh

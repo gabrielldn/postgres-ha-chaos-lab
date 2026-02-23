@@ -7,6 +7,7 @@ Este diretório registra decisões arquiteturais relevantes do projeto.
 - `0001-haproxy-rest-checks.md`
 - `0002-image-locking.md`
 - `0003-chaos-network.md`
+- `0004-tls-local-tradeoff.md`
 
 ## Convenção
 

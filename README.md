@@ -7,6 +7,10 @@
 ![Patroni 4.0.4](https://img.shields.io/badge/Patroni-4.0.4-1F5E99)
 ![etcd quorum 3](https://img.shields.io/badge/etcd-quorum%203-419EDA)
 ![Smoke CI](https://img.shields.io/github/actions/workflow/status/gabrielldn/postgres-ha-chaos-lab/smoke.yml?label=Smoke%20CI)
+![Release](https://img.shields.io/github/actions/workflow/status/gabrielldn/postgres-ha-chaos-lab/release.yml?label=Release)
+[![Latest Release](https://img.shields.io/github/v/release/gabrielldn/postgres-ha-chaos-lab?label=Latest%20Release)](https://github.com/gabrielldn/postgres-ha-chaos-lab/releases)
+[![GHCR Package](https://img.shields.io/badge/GHCR-postgres--ha--chaos--lab--pg-2ea44f?logo=github)](https://github.com/gabrielldn/postgres-ha-chaos-lab/pkgs/container/postgres-ha-chaos-lab-pg)
+![Coverage](docs/badges/coverage.svg)
 
 Laboratório local `production-like` para validar e demonstrar HA/DR/Chaos em PostgreSQL com evidência prática reproduzível em Linux Ubuntu 24.04+ (nativo ou WSL2).
 
@@ -51,7 +55,7 @@ Entregar um ambiente reproduzível para praticar e demonstrar:
 - Scripts de caos: `chaos/scripts/`.
 - Scripts de backup/PITR: `pgbackrest/scripts/`.
 - Evidence owner único: `scripts/evidence.sh`.
-- Governança técnica: `docs/adr/`, `runbooks/`, `.github/workflows/smoke.yml`.
+- Governança técnica: `docs/adr/`, `runbooks/`, `CONTRIBUTING.md`, `.github/workflows/`.
 
 ## Começando rápido (fluxo recomendado)
 
@@ -118,12 +122,34 @@ make verify
   - `t0`: instante do kill do primário
   - `t1`: primeira escrita commitada via endpoint RW
 
+## Releases e packages
+
+- Workflow de release: `.github/workflows/release.yml`.
+- Publicação de imagem custom (`postgres-patroni`) em GHCR por tag `v*`.
+- Assets de release incluem:
+  - `docs/examples/SUMMARY.example.md`
+  - `compose/images.lock.env`
+  - digest da imagem publicada (`postgres-patroni.digest.txt`)
+
+Exemplo de pull da imagem publicada:
+
+```bash
+docker pull ghcr.io/<owner>/postgres-ha-chaos-lab-pg:<tag>
+```
+
+## Cobertura de testes
+
+- CI executa cobertura da suíte sanity via `pytest-cov`.
+- Relatório XML: artifact `coverage-report` no workflow `smoke`.
+- Badge de cobertura versionado em `docs/badges/coverage.svg`.
+
 ## Documentação
 
 - Índice da documentação: `docs/README.md`
 - Arquitetura: `docs/arquitetura.md`
 - Troubleshooting: `docs/troubleshooting.md`
 - ADRs: `docs/adr/`
+- Contribuição: `CONTRIBUTING.md`
 - Runbooks: `runbooks/README.md`
 
 ## Observações práticas
@@ -131,3 +157,4 @@ make verify
 - `keepalived` é profile opcional/experimental em alguns ambientes locais (especialmente WSL2).
 - O cenário `chaos-primary-kill` pode violar SLO agressivo em hosts locais com contenção de recursos.
 - O critério de sucesso principal é segurança (sem split-brain) + evidência reproduzível.
+- TLS interno está desabilitado no perfil local por simplicidade; decisão e escopo em `docs/adr/0004-tls-local-tradeoff.md`.

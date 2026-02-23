@@ -26,3 +26,12 @@ jobs:
 
       - name: Run smoke checks
         run: make ci-smoke
+
+      - name: Run sanity coverage
+        run: make test-sanity-cov
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: artifacts/coverage/coverage.xml
